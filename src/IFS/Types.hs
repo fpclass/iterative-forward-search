@@ -35,9 +35,10 @@ type Domains = M.IntMap (S.Set Int)
 -- | Represents the variables used in the timetabling problem
 type Variables = S.Set Int
 
--- | Represents the constraints for the timetabling problem. Each constraint
--- applies to 1 variable
-type Constraints = M.IntMap [Int -> Bool]
+-- | Represents the constraints for the timetabling problem. The first element
+-- of the tuple represents the variables this constraint affects, the second is
+-- the constraint itself
+type Constraints = [(Variables, Assignment -> Bool)]
 
 -- | Represents an assignment of variables
 type Assignment = M.IntMap Int
