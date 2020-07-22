@@ -20,6 +20,7 @@ description:         Implementation of the IFS timetabling algorithm in Haskell
 
 dependencies:
 - base >= 4.7 && < 5
+- containers
 
 library:
   source-dirs: src
