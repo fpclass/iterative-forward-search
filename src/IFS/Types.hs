@@ -21,7 +21,12 @@ import qualified Data.Set as S
 --------------------------------------------------------------------------------
 
 -- | Represents a contraint satisfaction problem
-data CSP = CSP Domains Variables Constraints
+data CSP = CSP{
+    cspDomains       :: Domains,
+    cspVariables     :: Variables,
+    cspConstraints   :: Constraints,
+    cspMaxIterations :: Int
+}
 
 -- | Represents the domains for different variables. The variables are indexed
 -- by integers
