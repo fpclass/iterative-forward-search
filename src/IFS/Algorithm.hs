@@ -11,6 +11,7 @@ module IFS.Algorithm (
 
 --------------------------------------------------------------------------------
 
+import Control.Arrow (Arrow((&&&)))
 import Control.Monad.Trans.Class (MonadTrans(lift))
 import Control.Monad.Trans.Reader
 
@@ -21,7 +22,6 @@ import qualified Data.Set as S
 import System.Random
 
 import IFS.Types
-import Control.Arrow (Arrow((&&&)))
 
 --------------------------------------------------------------------------------
 
@@ -35,8 +35,33 @@ canContinue iterations currAssign =
     -- check conditions
     pure $ M.size doms == M.size currAssign || iterations >= max
 
+-- | `selectVariable` @currAssignment@ decides which variable to change next
 selectVariable :: Assignment -> CSPMonad Int
-selectVariable = undefined
+selectVariable currAssignment = do
+    -- get CSP parameters
+    CSP{..} <- ask
+
+    -- get variables currently not assigned. We can assume this is non-empty
+    -- as the algorithm terminates when all are assigned
+    let unassigned = cspVariables S.\\ S.fromList (M.keys currAssignment)
+
+    -- index these variables by size of domain - # connected constraints. The
+    -- lowest index is then the most restricted variable
+    let restricted = M.fromListWith (++) $ flip map (S.toList unassigned) $ \var ->
+            (S.size (cspDomains M.! var) - countConnectedCons var cspConstraints, [var])
+
+    -- get most restricted variables
+    let toChoseFrom = snd $ M.findMin restricted
+
+    -- pick a random variable from these
+    (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
+
+    where
+        -- counts the number of constraints connected to @var@
+        countConnectedCons var = flip foldl 0 $ \conflicting (conVars, _) ->
+            if var `S.member` conVars
+            then conflicting + 1
+            else conflicting
 
 -- | `setValue` @csp currAssign var@ determines a value to assign to @var@ and
 -- returns @currAssign@ with @var@ assigned to the determined value
