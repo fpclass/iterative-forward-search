@@ -48,6 +48,7 @@ selectVariable currAssignment = do
 
     -- index these variables by size of domain - # connected constraints. The
     -- lowest index is then the most restricted variable
+    -- TODO: This scaling one of these numbers could be better
     let restricted = M.fromListWith (++) $ flip map (S.toList unassigned) $ \var ->
             (S.size (cspDomains M.! var) - countConnectedCons var cspConstraints, [var])
 

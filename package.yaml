@@ -1,6 +1,6 @@
-name:                ifs-haskell
+name:                ifs
 version:             0.1.0.0
-github:              "fpclass/ifs-haskell"
+github:              "fpclass/ifs"
 license:             MIT
 author:              "Michael B. Gale and Oscar Harris"
 maintainer:          "m.gale@warwick.ac.uk"
@@ -23,6 +23,8 @@ dependencies:
 - containers
 - random
 - transformers
+- unordered-containers
+- hashable
 
 default-extensions:
 - RecordWildCards
@@ -39,4 +41,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - ifs-haskell
+    - ifs

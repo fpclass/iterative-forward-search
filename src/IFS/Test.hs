@@ -30,7 +30,11 @@ cons =
     [
         (S.fromList [1], \a -> a M.!? 1 `elem` [Just 15, Nothing]),
         (S.fromList [2], \a -> a M.!? 2 `elem` Nothing:map Just [11..20]),
-        (S.fromList [1,2], \a -> fromMaybe True $ (>) <$> a M.!? 1 <*> a M.!? 2)
+        (S.fromList [1,2], \a -> fromMaybe True $ (>) <$> a M.!? 1 <*> a M.!? 2),
+        (S.fromList [3], \a -> a M.!? 3 `elem` Nothing:map Just [1..5]),
+        (S.fromList [4], \a -> a M.!? 4 `elem` Nothing:map Just [1..4]),
+        (S.fromList [3,4], \a -> fromMaybe True $ (>) <$> a M.!? 3 <*> a M.!? 4),
+        (S.fromList [5], \a -> a M.!? 5 `elem` Nothing:map Just [1..3])
     ]
 
 testCSP :: CSP
