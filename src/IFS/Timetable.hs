@@ -90,8 +90,11 @@ toCSP slots groups availability = CSP {
     -- constraints prevent several groups being assigned to the same slot and
     -- users being assigned to 2 places at once
     cspConstraints = calcConstraints slots groups,
-    -- iterate a maximum of 10 times the number of groups to allocate
-    cspMaxIterations = 10 * HM.size groups
+    -- iterate a maximum of 100 times the number of groups to allocate
+    cspMaxIterations = 25 * HM.size groups,
+    -- iterate a maximum of 10 times the number of groups before switching to random
+    -- variable selection
+    cspRandomCap = 10 * HM.size groups
 }
 
 --------------------------------------------------------------------------------
@@ -99,6 +102,7 @@ toCSP slots groups availability = CSP {
 --------------------------------------------------------------------------------
 
 slots :: [Slots]
+-- slots = [S.fromList [1..8]]
 slots = map (\x -> S.fromList [2*x + 1, 2*x + 2]) [0..3]
 
 groups :: HM.HashMap Group [String]

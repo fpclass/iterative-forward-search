@@ -37,8 +37,8 @@ canContinue iterations currAssign =
     pure $ M.size doms > M.size currAssign && iterations <= max
 
 -- | `selectVariable` @currAssignment@ decides which variable to change next
-selectVariable :: Assignment -> CSPMonad Int
-selectVariable currAssignment = do
+selectVariable :: Int -> Assignment -> CSPMonad Int
+selectVariable iterations currAssignment = do
     -- get CSP parameters
     CSP{..} <- ask
 
@@ -52,14 +52,15 @@ selectVariable currAssignment = do
     let restricted = M.fromListWith (++) $ flip map (S.toList unassigned) $ \var ->
             (S.size (cspDomains M.! var) - countConnectedCons var cspConstraints, [var])
 
-    -- TODO: This doesn't work for CSPs without a feasible solution, for example
-    -- if 2 constraints conflict it won't find the maximal working solution, it will
-    -- never select variables that are deemed less important than the conflict
-    -- get most restricted variables
-    let toChoseFrom = snd $ M.findMin restricted
-
-    -- pick a random variable from these
-    (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
+    if iterations < cspRandomCap
+    then
+        -- pick a random variable from the most difficult
+        let toChoseFrom = snd $ M.findMin restricted
+        in (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
+    else
+        -- pick any random variable
+        let unassignedList = S.toList unassigned
+        in (unassignedList !!) <$> lift (randomRIO (0, length unassignedList - 1))
 
     where
         -- counts the number of constraints connected to @var@
@@ -156,7 +157,7 @@ ifs' iterations currAssign bestAssign = canContinue iterations currAssign >>= \c
     if continue
     then do
         -- get variable to change
-        var <- selectVariable currAssign
+        var <- selectVariable iterations currAssign
 
         -- determine and set new value for @var@
         newAssignment <- setValue currAssign var
