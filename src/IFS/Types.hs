@@ -16,10 +16,10 @@ module IFS.Types (
 
 --------------------------------------------------------------------------------
 
-import Control.Monad.Trans.Reader (ReaderT)
+import           Control.Monad.Trans.Reader ( ReaderT )
 
-import qualified Data.IntMap as M
-import qualified Data.Set as S
+import qualified Data.IntMap                as M
+import qualified Data.Set                   as S
 
 --------------------------------------------------------------------------------
 

@@ -11,17 +11,18 @@ module IFS.Algorithm (
 
 --------------------------------------------------------------------------------
 
-import Control.Arrow (Arrow((&&&)))
-import Control.Monad.Trans.Class (MonadTrans(lift))
-import Control.Monad.Trans.Reader
+import           Control.Arrow              ( Arrow ((&&&)) )
+import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
+import           Control.Monad.Trans.Reader
 
-import qualified Data.IntMap as M
-import Data.Maybe (fromJust)
-import qualified Data.Set as S
+import qualified Data.IntMap                as M
+import           Data.Maybe                 ( fromJust )
+import qualified Data.Set                   as S
 
-import System.Random
+import           System.Random
 
-import IFS.Types
+import           Control.Monad              ( when )
+import           IFS.Types
 
 --------------------------------------------------------------------------------
 
@@ -33,7 +34,7 @@ canContinue iterations currAssign =
     -- get domains and max interations
     (cspDomains &&& cspMaxIterations) <$> ask >>= \(doms, max) ->
     -- check conditions
-    pure $ M.size doms == M.size currAssign || iterations >= max
+    pure $ M.size doms > M.size currAssign && iterations <= max
 
 -- | `selectVariable` @currAssignment@ decides which variable to change next
 selectVariable :: Assignment -> CSPMonad Int
@@ -50,6 +51,9 @@ selectVariable currAssignment = do
     let restricted = M.fromListWith (++) $ flip map (S.toList unassigned) $ \var ->
             (S.size (cspDomains M.! var) - countConnectedCons var cspConstraints, [var])
 
+    -- TODO: This doesn't work for CSPs without a feasible solution, for example
+    -- if 2 constraints conflict it won't find the maximal working solution, it will
+    -- never select variables that are deemed less important than the conflict
     -- get most restricted variables
     let toChoseFrom = snd $ M.findMin restricted
 
@@ -68,23 +72,27 @@ selectVariable currAssignment = do
 setValue :: Assignment -> Int -> CSPMonad Assignment
 setValue currAssign var = do
     (doms, cons) <- (cspDomains &&& cspConstraints) <$> ask
-    let domain = fromJust $ M.lookup var doms
+    let domain = flip S.filter (fromJust $ M.lookup var doms) $ \val ->
+            countConflicts (M.singleton var val) cons == 0
+
+    -- TODO: Probably something better than this
+    when (null domain) $ error "CSP Cannot Be Solved"
 
     -- create map with key of the number of contraints violated, and the value
     -- being a list of assignments with that number of conflicts
     let conflictMap = M.fromListWith (++) $ flip map (S.toList domain) $ \val ->
             let assignment = M.insert var val currAssign
             in (countConflicts assignment cons, [assignment])
-    
+
     -- TODO: Some kind of nice formula - weight the smaller conflicts more
     -- and the weighting should be heaver if the gap between nums of conflicts
     -- is larger
     -- Will chose from the 10% of assignments with the lowest number of conflicts
     let cap = ceiling $ 0.1 * fromIntegral (S.size domain) -- :: Int
-    
+
     -- get at least @cap@ assignments in order of conflicts
     let toChoseFrom = getToChoseFrom 0 cap [] conflictMap
-    
+
     -- get a radndom assignment from this list
     (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
 
@@ -95,18 +103,18 @@ setValue currAssign var = do
                 if constraintF assignment
                 then conflicting
                 else conflicting + 1
-        
+
         -- gets lowest number of assignments >cap possible when sorting by
         -- conflict number
         getToChoseFrom :: Int -> Int -> [Assignment] -> M.IntMap [Assignment] -> [Assignment]
         getToChoseFrom n cap added toAdd
-            | n > cap   = added
-            | otherwise = let (as, toAdd') = M.deleteFindMin toAdd
+            | n >= cap   = added
+            | otherwise = let ((_,as), toAdd') = M.deleteFindMin toAdd
                           in getToChoseFrom (n + length as) cap
-                                (added ++ snd as) toAdd'
+                                (added ++ as) toAdd'
 
 -- | `removeConflicts` @currAssign var@ checks which constraints from @csp@
--- are violated by @currAssign@ and removes all variables involved in the 
+-- are violated by @currAssign@ and removes all variables involved in the
 -- violated constraints except @var@
 removeConflicts :: Assignment -> Int -> CSPMonad Assignment
 removeConflicts currAssignment var = cspConstraints <$> ask >>= \cons ->
@@ -154,7 +162,7 @@ ifs' iterations currAssign bestAssign = canContinue iterations currAssign >>= \c
 
         -- find and unassign conflicting variables
         conflictsRemoved <- removeConflicts newAssignment var
-        
+
         -- run ifs' with the new assignment
         ifs' (iterations+1) conflictsRemoved =<< getBest conflictsRemoved bestAssign
 
