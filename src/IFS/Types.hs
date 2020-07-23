@@ -6,6 +6,7 @@
 --------------------------------------------------------------------------------
 
 module IFS.Types (
+    CSPMonad,
     CSP(..),
     Domains,
     Variables,
@@ -15,10 +16,15 @@ module IFS.Types (
 
 --------------------------------------------------------------------------------
 
+import Control.Monad.Trans.Reader (ReaderT)
+
 import qualified Data.IntMap as M
 import qualified Data.Set as S
 
 --------------------------------------------------------------------------------
+
+-- | Monad used in CSP solver
+type CSPMonad = ReaderT CSP IO
 
 -- | Represents a contraint satisfaction problem
 data CSP = CSP{
