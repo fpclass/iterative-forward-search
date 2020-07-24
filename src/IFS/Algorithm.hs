@@ -15,6 +15,7 @@ import           Control.Arrow              ( Arrow ((&&&)) )
 import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
 import           Control.Monad.Trans.Reader
 
+import           Data.Foldable              ( foldlM )
 import qualified Data.IntMap                as M
 import           Data.Maybe                 ( fromJust, fromMaybe )
 import qualified Data.Set                   as S
@@ -36,6 +37,22 @@ defaultCanContinue iterations currAssign =
     -- check conditions
     pure $ M.size doms > M.size currAssign && iterations <= 25 * S.size vars
 
+-- | `getMostRestricted` @vars doms cons@ indexes these variables by size of
+-- domain - # connected constraints. The lowest index is then the most
+-- restricted variable.
+getMostRestricted :: Variables -> Domains -> Constraints -> M.IntMap [Int]
+getMostRestricted vars doms cons =
+    -- TODO: This scaling one of these numbers could be better
+    M.fromListWith (++) $ flip map (S.toList vars) $ \var ->
+            (S.size (doms M.! var) - countConnectedCons var cons, [var])
+
+    where
+        -- counts the number of constraints connected to @var@
+        countConnectedCons var = flip foldl 0 $ \conflicting (conVars, _) ->
+            if var `S.member` conVars
+            then conflicting + 1
+            else conflicting
+
 -- | `selectVariable` @currAssignment@ decides which variable to change next
 selectVariable :: Int -> Assignment -> CSPMonad Int
 selectVariable iterations currAssignment = do
@@ -46,12 +63,11 @@ selectVariable iterations currAssignment = do
     -- as the algorithm terminates when all are assigned
     let unassigned = cspVariables S.\\ S.fromList (M.keys currAssignment)
 
-    -- index these variables by size of domain - # connected constraints. The
-    -- lowest index is then the most restricted variable
-    -- TODO: This scaling one of these numbers could be better
-    let restricted = M.fromListWith (++) $ flip map (S.toList unassigned) $ \var ->
-            (S.size (cspDomains M.! var) - countConnectedCons var cspConstraints, [var])
+    -- find which of these is most restricted
+    let restricted = getMostRestricted unassigned cspDomains cspConstraints
 
+    -- if we are before the random cap then pick one of the most difficult
+    -- variables
     if iterations < cspRandomCap
     then
         -- pick a random variable from the most difficult
@@ -61,13 +77,6 @@ selectVariable iterations currAssignment = do
         -- pick any random variable
         let unassignedList = S.toList unassigned
         in (unassignedList !!) <$> lift (randomRIO (0, length unassignedList - 1))
-
-    where
-        -- counts the number of constraints connected to @var@
-        countConnectedCons var = flip foldl 0 $ \conflicting (conVars, _) ->
-            if var `S.member` conVars
-            then conflicting + 1
-            else conflicting
 
 -- | `setValue` @csp currAssign var@ determines a value to assign to @var@ and
 -- returns @currAssign@ with @var@ assigned to the determined value
@@ -116,22 +125,42 @@ setValue currAssign var = do
                           in getToChoseFrom (n + length as) cap
                                 (added ++ as) toAdd'
 
+-- | `removeConflicts'` @var assign constraintF toRemove@ repeated unassigns
+-- one of the least constrained variables except @var@ from @assign@ until the
+-- @constraintF@ passes
+removeConflicts' :: Int
+                 -> Assignment
+                 -> (Assignment -> Bool)
+                 -> M.IntMap [Int]
+                 -> Assignment
+removeConflicts' var assign constraintF toRemove
+    | constraintF assign = assign
+    | otherwise          =
+        let
+            -- get next minimum variables
+            (_, x:remaining) = M.findMax toRemove
+            -- remove this variable from the map
+            toRemove' = if null remaining
+                        then snd $ M.deleteFindMax toRemove
+                        else M.updateMax (const $ Just remaining) toRemove
+            -- unassign this variable unless it is the variable just assigned
+            newAssign = if x==var then assign else M.delete x assign
+        in removeConflicts' var newAssign constraintF toRemove'
+
 -- | `removeConflicts` @currAssign var@ checks which constraints from @csp@
 -- are violated by @currAssign@ and removes all variables involved in the
 -- violated constraints except @var@
 removeConflicts :: Assignment -> Int -> CSPMonad Assignment
-removeConflicts currAssignment var = cspConstraints <$> ask >>= \cons ->
-    -- check each constraint and if it is violated add the variables involved
-    -- other than @var@ to the set of conflicting variables
-    -- TODO: Something more intelligent
-    let conflictingVars = flip (flip foldl S.empty) cons $
-            \conflicting (constraintVars, constraintF) ->
-                if constraintF currAssignment
-                then conflicting
-                else conflicting `S.union` S.delete var constraintVars
-
-    -- unassign conflicting variables
-    in pure $ foldr M.delete currAssignment conflictingVars
+removeConflicts currAssignment var =
+    (cspDomains &&& cspConstraints) <$> ask >>= \(doms, cons) ->
+    -- check each constraint and if it is violated unassign variables until
+    -- the constraint passes
+    pure $ flip (flip foldl currAssignment) cons $
+            \assign (constraintVars, constraintF) ->
+                if constraintF assign
+                then assign
+                else removeConflicts' var assign constraintF
+                        $ getMostRestricted constraintVars doms cons
 
 -- | `getBest` @newAssign bestAssign@ determines whether @newAssign@ is better
 -- than @bestAssign@ and returns the best out of the two. A random is picked
@@ -176,4 +205,4 @@ ifs' iterations currAssign bestAssign = do
 -- | `ifs` @csp startingAssignment@ performs an iterative first search on @csp@
 -- using @startingAssignment@ as the initial assignment
 ifs :: CSP -> Assignment -> IO Assignment
-ifs csp startingAssignment = runReaderT (ifs' 0 startingAssignment startingAssignment) csp
+ifs csp startingAssignment =runReaderT (ifs' 0 startingAssignment startingAssignment) csp
