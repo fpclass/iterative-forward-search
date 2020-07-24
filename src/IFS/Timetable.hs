@@ -94,7 +94,9 @@ toCSP slots groups availability = CSP {
     cspMaxIterations = 25 * HM.size groups,
     -- iterate a maximum of 10 times the number of groups before switching to random
     -- variable selection
-    cspRandomCap = 10 * HM.size groups
+    cspRandomCap = 10 * HM.size groups,
+    -- use default termination condition
+    cspTermination = Nothing
 }
 
 --------------------------------------------------------------------------------

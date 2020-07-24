@@ -16,7 +16,7 @@ import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
 import           Control.Monad.Trans.Reader
 
 import qualified Data.IntMap                as M
-import           Data.Maybe                 ( fromJust )
+import           Data.Maybe                 ( fromJust, fromMaybe )
 import qualified Data.Set                   as S
 
 import           System.Random
@@ -26,11 +26,11 @@ import           IFS.Types
 
 --------------------------------------------------------------------------------
 
--- | `canContinue` @iterations currAssign@ determines whether to continue the
--- algorithm or terminate. It terminates if the current assignment assigns all
--- variables or the maximum number of iterations has been exceded
-canContinue :: Int -> Assignment -> CSPMonad Bool
-canContinue iterations currAssign =
+-- | `defaultCanContinue` @iterations currAssign@ determines whether to continue
+-- the algorithm or terminate. It terminates if the current assignment assigns
+-- all variables or the maximum number of iterations has been exceded
+defaultCanContinue :: Int -> Assignment -> CSPMonad Bool
+defaultCanContinue iterations currAssign =
     -- get domains and max interations
     (cspDomains &&& cspMaxIterations) <$> ask >>= \(doms, max) ->
     -- check conditions
@@ -153,7 +153,9 @@ getBest newAssign bestAssign =
 -- assignment. If `canContinue` returns false the best assignment found so far
 -- is returned
 ifs' :: Int -> Assignment -> Assignment -> CSPMonad Assignment
-ifs' iterations currAssign bestAssign = canContinue iterations currAssign >>= \continue ->
+ifs' iterations currAssign bestAssign = do
+    canContinue <- fromMaybe defaultCanContinue <$> cspTermination <$> ask
+    continue <- canContinue iterations currAssign
     if continue
     then do
         -- get variable to change

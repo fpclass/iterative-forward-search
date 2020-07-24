@@ -38,7 +38,7 @@ cons =
     ]
 
 testCSP :: CSP
-testCSP = CSP doms vars cons 20
+testCSP = CSP doms vars cons 20 5
 
 doTest :: IO Assignment
 doTest = ifs testCSP M.empty

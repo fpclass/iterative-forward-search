@@ -32,7 +32,8 @@ data CSP = CSP{
     cspVariables     :: Variables,
     cspConstraints   :: Constraints,
     cspMaxIterations :: Int,
-    cspRandomCap     :: Int
+    cspRandomCap     :: Int,
+    cspTermination   :: Maybe (Int -> Assignment -> CSPMonad Bool)
 }
 
 -- | Represents the domains for different variables. The variables are indexed
