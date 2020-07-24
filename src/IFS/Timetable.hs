@@ -104,8 +104,10 @@ toCSP slots groups availability = CSP {
 --------------------------------------------------------------------------------
 
 slots :: [Slots]
--- slots = [S.fromList [1..8]]
 slots = map (\x -> S.fromList [2*x + 1, 2*x + 2]) [0..3]
+
+slots' :: [Slots]
+slots' = [S.fromList [1..8]]
 
 groups :: HM.HashMap Group [String]
 groups = HM.fromList $ zip [1..8] $

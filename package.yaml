@@ -42,3 +42,17 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - ifs
+
+benchmarks:
+  ifs-benchmark:
+    main:                Main.hs 
+    source-dirs:         bench 
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -Wall
+    - -O2
+    dependencies:
+    - ifs
+    - criterion
+    - deepseq
