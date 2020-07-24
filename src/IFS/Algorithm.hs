@@ -32,9 +32,9 @@ import           IFS.Types
 defaultCanContinue :: Int -> Assignment -> CSPMonad Bool
 defaultCanContinue iterations currAssign =
     -- get domains and max interations
-    (cspDomains &&& cspMaxIterations) <$> ask >>= \(doms, max) ->
+    (cspDomains &&& cspVariables) <$> ask >>= \(doms, vars) ->
     -- check conditions
-    pure $ M.size doms > M.size currAssign && iterations <= max
+    pure $ M.size doms > M.size currAssign && iterations <= 25 * S.size vars
 
 -- | `selectVariable` @currAssignment@ decides which variable to change next
 selectVariable :: Int -> Assignment -> CSPMonad Int

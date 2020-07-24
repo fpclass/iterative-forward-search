@@ -15,6 +15,8 @@ import           IFS.Algorithm
 import           IFS.Timetable
 import           IFS.Types
 
+--------------------------------------------------------------------------------
+
 cspSolvable :: CSP
 cspSolvable = toCSP slots groups usersAvail
 

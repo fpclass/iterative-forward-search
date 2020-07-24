@@ -28,12 +28,11 @@ type CSPMonad = ReaderT CSP IO
 
 -- | Represents a contraint satisfaction problem
 data CSP = CSP{
-    cspDomains       :: Domains,
-    cspVariables     :: Variables,
-    cspConstraints   :: Constraints,
-    cspMaxIterations :: Int,
-    cspRandomCap     :: Int,
-    cspTermination   :: Maybe (Int -> Assignment -> CSPMonad Bool)
+    cspDomains     :: Domains,
+    cspVariables   :: Variables,
+    cspConstraints :: Constraints,
+    cspRandomCap   :: Int,
+    cspTermination :: Maybe (Int -> Assignment -> CSPMonad Bool)
 }
 
 -- | Represents the domains for different variables. The variables are indexed
