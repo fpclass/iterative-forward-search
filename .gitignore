@@ -1,3 +1,4 @@
 .stack-work/
 *.cabal
 *~
+src/IFS/Test.hs
