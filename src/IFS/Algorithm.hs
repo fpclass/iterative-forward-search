@@ -77,26 +77,27 @@ setValue currAssign var = do
     let domain = flip S.filter (fromJust $ M.lookup var doms) $ \val ->
             countConflicts (M.singleton var val) cons == 0
 
-    -- TODO: Probably something better than this
-    when (null domain) $ error "CSP Cannot Be Solved"
+    -- If no possible values return current assignment unchanged
+    if null domain
+    then pure currAssign
+    else do
+        -- create map with key of the number of contraints violated, and the value
+        -- being a list of assignments with that number of conflicts
+        let conflictMap = M.fromListWith (++) $ flip map (S.toList domain) $ \val ->
+                let assignment = M.insert var val currAssign
+                in (countConflicts assignment cons, [assignment])
 
-    -- create map with key of the number of contraints violated, and the value
-    -- being a list of assignments with that number of conflicts
-    let conflictMap = M.fromListWith (++) $ flip map (S.toList domain) $ \val ->
-            let assignment = M.insert var val currAssign
-            in (countConflicts assignment cons, [assignment])
+        -- TODO: Some kind of nice formula - weight the smaller conflicts more
+        -- and the weighting should be heaver if the gap between nums of conflicts
+        -- is larger
+        -- Will chose from the 10% of assignments with the lowest number of conflicts
+        let cap = ceiling $ 0.1 * fromIntegral (S.size domain) -- :: Int
 
-    -- TODO: Some kind of nice formula - weight the smaller conflicts more
-    -- and the weighting should be heaver if the gap between nums of conflicts
-    -- is larger
-    -- Will chose from the 10% of assignments with the lowest number of conflicts
-    let cap = ceiling $ 0.1 * fromIntegral (S.size domain) -- :: Int
+        -- get at least @cap@ assignments in order of conflicts
+        let toChoseFrom = getToChoseFrom 0 cap [] conflictMap
 
-    -- get at least @cap@ assignments in order of conflicts
-    let toChoseFrom = getToChoseFrom 0 cap [] conflictMap
-
-    -- get a radndom assignment from this list
-    (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
+        -- get a radndom assignment from this list
+        (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
 
     where
         -- counts the number of conflicts in @assignment@
