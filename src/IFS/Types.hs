@@ -18,34 +18,34 @@ module IFS.Types (
 
 import           Control.Monad.Trans.Reader ( ReaderT )
 
-import qualified Data.IntMap                as M
+import qualified Data.Map                   as M
 import qualified Data.Set                   as S
 
 --------------------------------------------------------------------------------
 
 -- | Monad used in CSP solver
-type CSPMonad = ReaderT CSP IO
+type CSPMonad var val = ReaderT (CSP var val) IO
 
 -- | Represents a contraint satisfaction problem
-data CSP = CSP{
-    cspDomains     :: Domains,
-    cspVariables   :: Variables,
-    cspConstraints :: Constraints,
+data CSP var val = CSP{
+    cspDomains     :: Domains var val,
+    cspVariables   :: Variables var,
+    cspConstraints :: Constraints var val,
     cspRandomCap   :: Int,
-    cspTermination :: Maybe (Int -> Assignment -> CSPMonad Bool)
+    cspTermination :: Maybe (Int -> Assignment var val -> CSPMonad var val Bool)
 }
 
 -- | Represents the domains for different variables. The variables are indexed
 -- by integers
-type Domains = M.IntMap (S.Set Int)
+type Domains var val = M.Map var (S.Set val)
 
 -- | Represents the variables used in the timetabling problem
-type Variables = S.Set Int
+type Variables var = S.Set var
 
 -- | Represents the constraints for the timetabling problem. The first element
 -- of the tuple represents the variables this constraint affects, the second is
 -- the constraint itself
-type Constraints = [(Variables, Assignment -> Bool)]
+type Constraints var val = [(Variables var, Assignment var val -> Bool)]
 
 -- | Represents an assignment of variables
-type Assignment = M.IntMap Int
+type Assignment var val = M.Map var val

@@ -9,7 +9,7 @@ import           Criterion.Main
 
 import           Control.Monad
 
-import qualified Data.IntMap    as M
+import qualified Data.Map       as M
 
 import           IFS.Algorithm
 import           IFS.Timetable
@@ -17,13 +17,13 @@ import           IFS.Types
 
 --------------------------------------------------------------------------------
 
-cspSolvable :: CSP
-cspSolvable = toCSP slots groups usersAvail
+cspSolvable :: CSP Int Int
+cspSolvable = toCSP slots events usersAvail
 
-cspUnsolvable :: CSP
-cspUnsolvable = toCSP slots' groups usersAvail
+cspUnsolvable :: CSP Int Int
+cspUnsolvable = toCSP slots' events usersAvail
 
-countExpectedLength :: Int -> [M.IntMap a] -> Int
+countExpectedLength :: Int -> [M.Map Int a] -> Int
 countExpectedLength n = length . filter ((==n) . M.size)
 
 main :: IO ()
@@ -32,7 +32,7 @@ main = do
     resultsSolveable <- replicateM 1000 $ ifs cspSolvable M.empty
     putStrLn $ "Solvable Best: " ++ show (countExpectedLength 8 resultsSolveable)
     resultsUnsolveable <- replicateM 1000 $ ifs cspUnsolvable M.empty
-    putStrLn $ "Unsolvable Best: " ++ show (countExpectedLength 4 resultsUnsolveable)
+    putStrLn $ "Unsolvable Best: " ++ show (countExpectedLength 6 resultsUnsolveable)
 
     -- benchmark solvable and unsolvable CSPs
     defaultMain
