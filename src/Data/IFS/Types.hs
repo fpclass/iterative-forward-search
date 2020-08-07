@@ -5,7 +5,7 @@
 -- file in the root directory of this source tree.                            --
 --------------------------------------------------------------------------------
 
-module IFS.Types (
+module Data.IFS.Types (
     Var,
     Val,
     CSPMonad,

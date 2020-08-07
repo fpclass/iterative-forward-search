@@ -9,12 +9,12 @@ import           Criterion.Main
 
 import           Control.Monad
 
-import qualified Data.Map       as M
-import qualified Data.Set       as S
+import qualified Data.Map           as M
+import qualified Data.Set           as S
 
-import           IFS.Algorithm
-import           IFS.Timetable
-import           IFS.Types
+import           Data.IFS.Algorithm
+import           Data.IFS.Timetable
+import           Data.IFS.Types
 
 --------------------------------------------------------------------------------
 

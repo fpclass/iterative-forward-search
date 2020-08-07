@@ -5,13 +5,14 @@
 -- file in the root directory of this source tree.                            --
 --------------------------------------------------------------------------------
 
-module IFS.Algorithm (
+module Data.IFS.Algorithm (
     ifs
 ) where
 
 --------------------------------------------------------------------------------
 
 import           Control.Arrow              ( Arrow ((&&&)) )
+import           Control.Monad              ( when )
 import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
 import           Control.Monad.Trans.Reader
 
@@ -22,8 +23,7 @@ import           Data.Maybe                 ( fromJust, fromMaybe )
 
 import           System.Random
 
-import           Control.Monad              ( when )
-import           IFS.Types
+import           Data.IFS.Types
 
 --------------------------------------------------------------------------------
 

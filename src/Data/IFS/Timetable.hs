@@ -5,7 +5,7 @@
 -- file in the root directory of this source tree.                            --
 --------------------------------------------------------------------------------
 
-module IFS.Timetable where
+module Data.IFS.Timetable (toCSP) where
 
 --------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ import           Data.List                   ( nub )
 import           Data.Maybe                  ( catMaybes )
 import           Data.Time
 
-import           IFS.Types
+import           Data.IFS.Types
 
 --------------------------------------------------------------------------------
 
