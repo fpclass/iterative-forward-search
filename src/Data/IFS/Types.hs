@@ -13,7 +13,9 @@ module Data.IFS.Types (
     Domains,
     Variables,
     Constraints,
-    Assignment
+    Assignment,
+    Solution(..),
+    fromSolution
 ) where
 
 --------------------------------------------------------------------------------
@@ -57,5 +59,17 @@ type Constraints = [(Variables, Assignment -> Bool)]
 
 -- | Represents an assignment of variables
 type Assignment = M.IntMap Val
+
+-- | This is returned by the IFS. Solution indicates the assignment is complete,
+-- and Incomplete indicates the assignment is not complete
+data Solution
+    = Solution Assignment
+    | Incomplete Assignment
+
+-- | `fromSolution` @solution@ extracts an Assignment value from a Solution
+-- value
+fromSolution :: Solution -> Assignment
+fromSolution (Solution a)   = a
+fromSolution (Incomplete a) = a
 
 --------------------------------------------------------------------------------

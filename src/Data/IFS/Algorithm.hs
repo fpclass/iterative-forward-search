@@ -32,10 +32,10 @@ import           Data.IFS.Types
 -- all variables or the maximum number of iterations has been exceded
 defaultCanContinue :: Int -> Assignment -> CSPMonad Bool
 defaultCanContinue iterations currAssign =
-    -- get domains and max interations
-    (cspDomains &&& cspVariables) <$> ask >>= \(doms, vars) ->
+    -- get variables
+    cspVariables <$> ask >>= \vars ->
     -- check conditions
-    pure $ M.size doms > M.size currAssign && iterations <= 25 * S.size vars
+    pure $ S.size vars > M.size currAssign && iterations <= 25 * S.size vars
 
 -- | `getMostRestricted` @vars doms cons@ indexes these variables by size of
 -- domain - # connected constraints. The lowest index is then the most
@@ -224,8 +224,12 @@ ifs' iterations currAssign bestAssign = do
 -- using @startingAssignment@ as the initial assignment
 ifs :: CSP
     -> Assignment
-    -> IO Assignment
-ifs csp startingAssignment =
-    runReaderT (ifs' 0 startingAssignment startingAssignment) csp
+    -> IO Solution
+ifs csp startingAssignment = do
+    assignment <- runReaderT (ifs' 0 startingAssignment startingAssignment) csp
+
+    if S.size (cspVariables csp) > M.size assignment
+    then pure $ Incomplete assignment
+    else pure $ Solution assignment
 
 --------------------------------------------------------------------------------
