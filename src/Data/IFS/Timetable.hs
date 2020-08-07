@@ -89,8 +89,9 @@ toCSP :: (Eq user, Hashable user)
       => M.IntMap (Interval UTCTime)
       -> HM.HashMap Event [user]
       -> HM.HashMap user Slots
-      -> CSP
-toCSP slotMap events availability = let slots = M.keysSet slotMap in CSP {
+      -> (Int -> Assignment -> CSPMonad r (Maybe r))
+      -> CSP r
+toCSP slotMap events availability term = let slots = M.keysSet slotMap in CSP {
     -- variables are the events
     cspVariables = S.fromList $ HM.keys events,
     -- domains are the slots the events may be assigned to
@@ -102,7 +103,7 @@ toCSP slotMap events availability = let slots = M.keysSet slotMap in CSP {
     -- variable selection
     cspRandomCap = 10 * HM.size events,
     -- use default termination condition
-    cspTermination = Nothing
+    cspTermination = term
 }
 
 --------------------------------------------------------------------------------

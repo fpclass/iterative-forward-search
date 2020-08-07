@@ -34,15 +34,15 @@ type Var = Int
 type Val = Int
 
 -- | Monad used in CSP solver
-type CSPMonad = ReaderT CSP IO
+type CSPMonad r = ReaderT (CSP r) IO
 
 -- | Represents a contraint satisfaction problem
-data CSP = CSP{
+data CSP r = CSP{
     cspDomains     :: Domains,
     cspVariables   :: Variables,
     cspConstraints :: Constraints,
     cspRandomCap   :: Int,
-    cspTermination :: Maybe (Int -> Assignment -> CSPMonad Bool)
+    cspTermination :: Int -> Assignment -> CSPMonad r (Maybe r)
 }
 
 -- | Represents the domains for different variables. The variables are indexed

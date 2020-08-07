@@ -30,12 +30,14 @@ import           Data.IFS.Types
 -- | `defaultCanContinue` @iterations currAssign@ determines whether to continue
 -- the algorithm or terminate. It terminates if the current assignment assigns
 -- all variables or the maximum number of iterations has been exceded
-defaultCanContinue :: Int -> Assignment -> CSPMonad Bool
+defaultCanContinue :: Int -> Assignment -> CSPMonad Assignment (Maybe Assignment)
 defaultCanContinue iterations currAssign =
     -- get variables
     cspVariables <$> ask >>= \vars ->
     -- check conditions
-    pure $ S.size vars > M.size currAssign && iterations <= 25 * S.size vars
+    if S.size vars > M.size currAssign && iterations <= 25 * S.size vars
+    then pure Nothing
+    else pure $ Just currAssign
 
 -- | `getMostRestricted` @vars doms cons@ indexes these variables by size of
 -- domain - # connected constraints. The lowest index is then the most
@@ -57,7 +59,7 @@ getMostRestricted vars doms cons =
             else conflicting
 
 -- | `selectVariable` @currAssignment@ decides which variable to change next
-selectVariable :: Int -> Assignment -> CSPMonad Var
+selectVariable :: Int -> Assignment -> CSPMonad r Var
 selectVariable iterations currAssignment = do
     -- get CSP parameters
     CSP{..} <- ask
@@ -85,7 +87,7 @@ selectVariable iterations currAssignment = do
 -- returns @currAssign@ with @var@ assigned to the determined value
 setValue :: Assignment
          -> Var
-         -> CSPMonad Assignment
+         -> CSPMonad r Assignment
 setValue currAssign var = do
     (doms, cons) <- (cspDomains &&& cspConstraints) <$> ask
     let domain = flip S.filter (fromJust $ M.lookup var doms) $ \val ->
@@ -163,7 +165,7 @@ removeConflicts' var assign constraintF toRemove
 -- violated constraints except @var@
 removeConflicts :: Assignment
                 -> Var
-                -> CSPMonad Assignment
+                -> CSPMonad r Assignment
 removeConflicts currAssignment var =
     (cspDomains &&& cspConstraints) <$> ask >>= \(doms, cons) ->
     -- check each constraint and if it is violated unassign variables until
@@ -180,7 +182,7 @@ removeConflicts currAssignment var =
 -- if both are deemed equally good
 getBest :: Assignment
         -> Assignment
-        -> CSPMonad Assignment
+        -> CSPMonad r Assignment
 getBest newAssign bestAssign =
     case M.size newAssign `compare` M.size bestAssign of
         -- if more variables are assigned in the current assignment it is better
@@ -189,7 +191,7 @@ getBest newAssign bestAssign =
         LT -> pure bestAssign
         -- if both have an equal number of variables assigned pick randomly
         EQ -> do
-            useNew <- (<= 0.5) <$> (lift randomIO :: CSPMonad Double)
+            useNew <- (<= 0.5) <$> (lift randomIO :: CSPMonad r Double)
             pure $ if useNew then newAssign else bestAssign
 
 -- | `ifs'` @iterations currAssign bestAssign@ checks whether it should continue
@@ -200,36 +202,32 @@ getBest newAssign bestAssign =
 ifs' :: Int
      -> Assignment
      -> Assignment
-     -> CSPMonad Assignment
+     -> CSPMonad r r
 ifs' iterations currAssign bestAssign = do
-    canContinue <- fromMaybe defaultCanContinue <$> cspTermination <$> ask
-    continue <- canContinue iterations currAssign
-    if continue
-    then do
-        -- get variable to change
-        var <- selectVariable iterations currAssign
+    canContinue <- cspTermination <$> ask
+    continue <- canContinue iterations bestAssign
+    case continue of
+        Nothing -> do
+            -- get variable to change
+            var <- selectVariable iterations currAssign
 
-        -- determine and set new value for @var@
-        newAssignment <- setValue currAssign var
+            -- determine and set new value for @var@
+            newAssignment <- setValue currAssign var
 
-        -- find and unassign conflicting variables
-        conflictsRemoved <- removeConflicts newAssignment var
+            -- find and unassign conflicting variables
+            conflictsRemoved <- removeConflicts newAssignment var
 
-        -- run ifs' with the new assignment
-        ifs' (iterations+1) conflictsRemoved =<< getBest conflictsRemoved bestAssign
+            -- run ifs' with the new assignment
+            ifs' (iterations+1) conflictsRemoved =<< getBest conflictsRemoved bestAssign
 
-    else pure bestAssign
+        Just a -> pure a
 
 -- | `ifs` @csp startingAssignment@ performs an iterative first search on @csp@
 -- using @startingAssignment@ as the initial assignment
-ifs :: CSP
+ifs :: CSP r
     -> Assignment
-    -> IO Solution
-ifs csp startingAssignment = do
-    assignment <- runReaderT (ifs' 0 startingAssignment startingAssignment) csp
-
-    if S.size (cspVariables csp) > M.size assignment
-    then pure $ Incomplete assignment
-    else pure $ Solution assignment
+    -> IO r
+ifs csp startingAssignment =
+    runReaderT (ifs' 0 startingAssignment startingAssignment) csp
 
 --------------------------------------------------------------------------------
