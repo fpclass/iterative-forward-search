@@ -16,9 +16,9 @@ import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
 import           Control.Monad.Trans.Reader
 
 import           Data.Foldable              ( foldlM )
-import qualified Data.Map                   as M
+import qualified Data.IntMap                as M
+import qualified Data.IntSet                as S
 import           Data.Maybe                 ( fromJust, fromMaybe )
-import qualified Data.Set                   as S
 
 import           System.Random
 
@@ -30,7 +30,7 @@ import           IFS.Types
 -- | `defaultCanContinue` @iterations currAssign@ determines whether to continue
 -- the algorithm or terminate. It terminates if the current assignment assigns
 -- all variables or the maximum number of iterations has been exceded
-defaultCanContinue :: Int -> Assignment var val -> CSPMonad var val Bool
+defaultCanContinue :: Int -> Assignment -> CSPMonad Bool
 defaultCanContinue iterations currAssign =
     -- get domains and max interations
     (cspDomains &&& cspVariables) <$> ask >>= \(doms, vars) ->
@@ -40,11 +40,10 @@ defaultCanContinue iterations currAssign =
 -- | `getMostRestricted` @vars doms cons@ indexes these variables by size of
 -- domain - # connected constraints. The lowest index is then the most
 -- restricted variable.
-getMostRestricted :: Ord var
-                  => Variables var
-                  -> Domains var val
-                  -> Constraints var val
-                  -> M.Map Int [var]
+getMostRestricted :: Variables
+                  -> Domains
+                  -> Constraints
+                  -> M.IntMap [Var]
 getMostRestricted vars doms cons =
     -- TODO: This scaling one of these numbers could be better
     M.fromListWith (++) $ flip map (S.toList vars) $ \var ->
@@ -58,7 +57,7 @@ getMostRestricted vars doms cons =
             else conflicting
 
 -- | `selectVariable` @currAssignment@ decides which variable to change next
-selectVariable :: Ord var => Int -> Assignment var val -> CSPMonad var val var
+selectVariable :: Int -> Assignment -> CSPMonad Var
 selectVariable iterations currAssignment = do
     -- get CSP parameters
     CSP{..} <- ask
@@ -84,17 +83,16 @@ selectVariable iterations currAssignment = do
 
 -- | `setValue` @csp currAssign var@ determines a value to assign to @var@ and
 -- returns @currAssign@ with @var@ assigned to the determined value
-setValue :: (Eq val, Ord var)
-         => Assignment var val
-         -> var
-         -> CSPMonad var val (Assignment var val)
+setValue :: Assignment
+         -> Var
+         -> CSPMonad Assignment
 setValue currAssign var = do
     (doms, cons) <- (cspDomains &&& cspConstraints) <$> ask
     let domain = flip S.filter (fromJust $ M.lookup var doms) $ \val ->
             countConflicts (M.singleton var val) cons == 0
 
     -- If no possible values return current assignment unchanged
-    if null domain
+    if S.null domain
     then pure currAssign
     else do
         -- create map with key of the number of contraints violated, and the
@@ -129,9 +127,9 @@ setValue currAssign var = do
         -- conflict number
         getToChoseFrom :: Int
                        -> Int
-                       -> [Assignment var val]
-                       -> M.Map Int [Assignment var val]
-                       -> [Assignment var val]
+                       -> [Assignment]
+                       -> M.IntMap [Assignment]
+                       -> [Assignment]
         getToChoseFrom n cap added toAdd
             | n >= cap   = added
             | otherwise = let ((_,as), toAdd') = M.deleteFindMin toAdd
@@ -141,12 +139,11 @@ setValue currAssign var = do
 -- | `removeConflicts'` @var assign constraintF toRemove@ repeated unassigns
 -- one of the least constrained variables except @var@ from @assign@ until the
 -- @constraintF@ passes
-removeConflicts' :: Ord var
-                 => var
-                 -> Assignment var val
-                 -> (Assignment var val -> Bool)
-                 -> M.Map Int [var]
-                 -> Assignment var val
+removeConflicts' :: Var
+                 -> Assignment
+                 -> (Assignment -> Bool)
+                 -> M.IntMap [Var]
+                 -> Assignment
 removeConflicts' var assign constraintF toRemove
     | constraintF assign = assign
     | otherwise          =
@@ -164,10 +161,9 @@ removeConflicts' var assign constraintF toRemove
 -- | `removeConflicts` @currAssign var@ checks which constraints from @csp@
 -- are violated by @currAssign@ and removes all variables involved in the
 -- violated constraints except @var@
-removeConflicts :: Ord var
-                => Assignment var val
-                -> var
-                -> CSPMonad var val (Assignment var val)
+removeConflicts :: Assignment
+                -> Var
+                -> CSPMonad Assignment
 removeConflicts currAssignment var =
     (cspDomains &&& cspConstraints) <$> ask >>= \(doms, cons) ->
     -- check each constraint and if it is violated unassign variables until
@@ -182,9 +178,9 @@ removeConflicts currAssignment var =
 -- | `getBest` @newAssign bestAssign@ determines whether @newAssign@ is better
 -- than @bestAssign@ and returns the best out of the two. A random is picked
 -- if both are deemed equally good
-getBest :: Assignment var val
-        -> Assignment var val
-        -> CSPMonad var val (Assignment var val)
+getBest :: Assignment
+        -> Assignment
+        -> CSPMonad Assignment
 getBest newAssign bestAssign =
     case M.size newAssign `compare` M.size bestAssign of
         -- if more variables are assigned in the current assignment it is better
@@ -193,7 +189,7 @@ getBest newAssign bestAssign =
         LT -> pure bestAssign
         -- if both have an equal number of variables assigned pick randomly
         EQ -> do
-            useNew <- (<= 0.5) <$> (lift randomIO :: CSPMonad var val Double)
+            useNew <- (<= 0.5) <$> (lift randomIO :: CSPMonad Double)
             pure $ if useNew then newAssign else bestAssign
 
 -- | `ifs'` @iterations currAssign bestAssign@ checks whether it should continue
@@ -201,11 +197,10 @@ getBest newAssign bestAssign =
 -- IFS algorithm and recursively calls this function again with the new
 -- assignment. If `canContinue` returns false the best assignment found so far
 -- is returned
-ifs' :: (Eq val, Ord var)
-     => Int
-     -> Assignment var val
-     -> Assignment var val
-     -> CSPMonad var val (Assignment var val)
+ifs' :: Int
+     -> Assignment
+     -> Assignment
+     -> CSPMonad Assignment
 ifs' iterations currAssign bestAssign = do
     canContinue <- fromMaybe defaultCanContinue <$> cspTermination <$> ask
     continue <- canContinue iterations currAssign
@@ -227,9 +222,10 @@ ifs' iterations currAssign bestAssign = do
 
 -- | `ifs` @csp startingAssignment@ performs an iterative first search on @csp@
 -- using @startingAssignment@ as the initial assignment
-ifs :: (Eq val, Ord var)
-    => CSP var val
-    -> Assignment var val
-    -> IO (Assignment var val)
+ifs :: CSP
+    -> Assignment
+    -> IO Assignment
 ifs csp startingAssignment =
     runReaderT (ifs' 0 startingAssignment startingAssignment) csp
+
+--------------------------------------------------------------------------------

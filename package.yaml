@@ -25,6 +25,8 @@ dependencies:
 - transformers
 - unordered-containers
 - hashable
+- fingertree
+- time
 
 default-extensions:
 - RecordWildCards
