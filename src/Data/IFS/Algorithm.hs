@@ -12,14 +12,12 @@ module Data.IFS.Algorithm (
 --------------------------------------------------------------------------------
 
 import           Control.Arrow              ( Arrow ((&&&)) )
-import           Control.Monad              ( when )
 import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
 import           Control.Monad.Trans.Reader
 
-import           Data.Foldable              ( foldlM )
 import qualified Data.IntMap                as M
 import qualified Data.IntSet                as S
-import           Data.Maybe                 ( fromJust, fromMaybe )
+import           Data.Maybe                 ( fromJust )
 
 import           System.Random
 

@@ -25,7 +25,6 @@ import           Data.IFS.Types
 type Slots = S.IntSet
 type Slot = Int
 type Event = Int
-type User = Int
 
 -- | `noOverlap` @vs@ ensures that no Just values in @vs@ are the same
 noOverlap :: [Maybe Slot] -> Bool
@@ -72,11 +71,10 @@ flipHashmap hm = HM.fromListWith (++) $ concat $ flip HM.mapWithKey hm $
 -- the same slot being used by 2 events, and the same user being assigned to 2
 -- places at once
 calcConstraints :: (Eq user, Hashable user)
-                => Slots
-                -> M.IntMap (Interval UTCTime)
+                => M.IntMap (Interval UTCTime)
                 -> HM.HashMap Event [user]
                 -> Constraints
-calcConstraints slots slotMap events =
+calcConstraints slotMap events =
     let eventKeys= HM.keys events in
     -- prevent duplicate slot usage
     (S.fromList eventKeys, \a -> noOverlap [a M.!? i | i <- eventKeys])
@@ -98,7 +96,7 @@ toCSP slotMap events availability term = let slots = M.keysSet slotMap in CSP {
     cspDomains = calcDomains slots events availability,
     -- constraints prevent several events being assigned to the same slot and
     -- users being assigned to 2 places at once
-    cspConstraints = calcConstraints slots slotMap events,
+    cspConstraints = calcConstraints slotMap events,
     -- iterate a maximum of 10 times the number of events before switching to random
     -- variable selection
     cspRandomCap = 10 * HM.size events,
