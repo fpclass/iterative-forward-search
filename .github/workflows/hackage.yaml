@@ -1,0 +1,26 @@
+name: Hackage CI
+
+on:
+  push:
+    tags:
+    - v*
+
+jobs:
+  push-to-hackage:
+    name: Push to Hackage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install the Haskell Stack 
+      run: |
+        mkdir -p ~/.local/bin
+        curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
+    - name: Create package
+      run: stack upload --pvp-bounds upper
+      env:
+        HACKAGE_USERNAME: ${{ secrets.hackage_username }}
+        HACKAGE_PASSWORD: ${{ secrets.hackage_password }}
