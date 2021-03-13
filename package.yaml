@@ -10,13 +10,13 @@ extra-source-files:
 - README.md
 
 # Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
+synopsis:            An IFS constraint solver
+category:            Constraints, Library
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Implementation of the IFS timetabling algorithm in Haskell
+description:         An implementation of the IFS contraint satisfaction algorithm
 
 dependencies:
 - base >= 4.7 && < 5
@@ -34,13 +34,13 @@ default-extensions:
 library:
   source-dirs: src
 
-tests:
-  ifs-haskell-test:
-    main:                Spec.hs
-    source-dirs:         test
+benchmarks:
+  ifs-bench:
+    main:                Main.hs
+    source-dirs:         bench
     ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
     dependencies:
-    - ifs
+      - ifs

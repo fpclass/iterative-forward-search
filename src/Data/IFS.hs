@@ -13,3 +13,5 @@ module Data.IFS (
 
 import Data.IFS.Algorithm as R
 import Data.IFS.Types     as R
+
+--------------------------------------------------------------------------------
