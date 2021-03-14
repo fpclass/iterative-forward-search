@@ -1,11 +1,13 @@
 --------------------------------------------------------------------------------
 -- Iterative Forward Search                                                   --
 --------------------------------------------------------------------------------
--- This source code is licensed under the terms found in the LICENSE          --
--- file in the root directory of this source tree.                            --
+-- This source code is licensed under the terms found in the LICENSE file in  --
+-- the root directory of this source tree.                                    --
 --------------------------------------------------------------------------------
 
-module Data.IFS.Timetable (toCSP) where
+module Data.IFS.Timetable (
+    toCSP
+) where
 
 --------------------------------------------------------------------------------
 
@@ -46,18 +48,18 @@ noConcurrentOverlap vs slots = snd $ foldl f (empty, True) vs'
 -- | `calcDomains` @slots events availability@ creates the domain for each event
 -- by finding all the slots where any member of the event is unavailable and
 -- removing them from the list of slots
-calcDomains :: (Eq user, Hashable user)
+calcDomains :: (Eq person, Hashable person)
             => Slots
-            -> HM.HashMap Event [user]
-            -> HM.HashMap user Slots
+            -> HM.HashMap Event [person]
+            -> HM.HashMap person Slots
             -> Domains
-calcDomains slots events availability =
+calcDomains slots events unavailability =
     -- generate map of domains for every event
-    flip (flip HM.foldlWithKey' M.empty) events $ \m event users ->
+    flip (flip HM.foldlWithKey' M.empty) events $ \m event people ->
         -- add domain for this event - all slots where no one is busy
         flip (M.insert event) m $ S.difference slots $
             -- generate all slots where any member is unavailable
-            foldl (\s u -> s `S.union` (availability HM.! u)) S.empty users
+            foldl (\s u -> s `S.union` (unavailability HM.! u)) S.empty people
 
 -- | `flipHashmap` @hm@ converts the hashmap of lists of type b with key a to
 -- a hashmap index on values of b linked to lists of a
@@ -68,40 +70,44 @@ flipHashmap hm = HM.fromListWith (++) $ concat $ flip HM.mapWithKey hm $
     \k vs -> map (\v -> (v, [k])) vs
 
 -- | `calcConstraints` @slots slotMap events@ creates the constraints which stop
--- the same slot being used by 2 events, and the same user being assigned to 2
+-- the same slot being used by 2 events, and the same person being assigned to 2
 -- places at once
-calcConstraints :: (Eq user, Hashable user)
+calcConstraints :: (Eq person, Hashable person)
                 => M.IntMap (Interval UTCTime)
-                -> HM.HashMap Event [user]
+                -> HM.HashMap Event [person]
                 -> Constraints
 calcConstraints slotMap events =
-    let eventKeys= HM.keys events in
-    -- prevent duplicate slot usage
-    (S.fromList eventKeys, \a -> noOverlap [a M.!? i | i <- eventKeys])
-    -- prevent the same user being allocated to multple places at the same time
-    : map (\xs -> (S.fromList xs, \a -> noConcurrentOverlap [a M.!? i | i <- xs] slotMap))
-        (filter ((>1) . length) $ HM.elems $ flipHashmap events)
+    let eventKeys = HM.keys events
+        noOverlapCons xs a = noConcurrentOverlap [a M.!? i | i <- xs] slotMap
+        notOverlapping = filter ((>1) . length) $ HM.elems $ flipHashmap events
+    in -- prevent duplicate slot usage
+       (S.fromList eventKeys, \a -> noOverlap [a M.!? i | i <- eventKeys])
+       -- prevent the same person being allocated to multple places at the same
+       -- time
+       : map (\xs -> (S.fromList xs, noOverlapCons xs)) notOverlapping
 
--- | `toCSP` @slots events userAvailability@ converts the given data into a CSP
-toCSP :: (Eq user, Hashable user)
+-- | `toCSP` @slots events unavailability@ converts the given data into a CSP
+toCSP :: (Eq person, Hashable person)
       => M.IntMap (Interval UTCTime)
-      -> HM.HashMap Event [user]
-      -> HM.HashMap user Slots
+      -> HM.HashMap Event [person]
+      -> HM.HashMap person Slots
       -> (Int -> Assignment -> CSPMonad r (Maybe r))
       -> CSP r
-toCSP slotMap events availability term = let slots = M.keysSet slotMap in CSP {
-    -- variables are the events
-    cspVariables = S.fromList $ HM.keys events,
-    -- domains are the slots the events may be assigned to
-    cspDomains = calcDomains slots events availability,
-    -- constraints prevent several events being assigned to the same slot and
-    -- users being assigned to 2 places at once
-    cspConstraints = calcConstraints slotMap events,
-    -- iterate a maximum of 10 times the number of events before switching to random
-    -- variable selection
-    cspRandomCap = 10 * HM.size events,
-    -- use default termination condition
-    cspTermination = term
-}
+toCSP slotMap events unavailability term =
+    let slots = M.keysSet slotMap
+    in CSP {
+        -- variables are the events
+        cspVariables = S.fromList $ HM.keys events,
+        -- domains are the slots the events may be assigned to
+        cspDomains = calcDomains slots events unavailability,
+        -- constraints prevent several events being assigned to the same slot
+        -- and people being assigned to 2 places at once
+        cspConstraints = calcConstraints slotMap events,
+        -- iterate a maximum of 10 times the number of events before switching
+        -- to random variable selection
+        cspRandomCap = 10 * HM.size events,
+        -- use the provided termination condition
+        cspTermination = term
+    }
 
 --------------------------------------------------------------------------------

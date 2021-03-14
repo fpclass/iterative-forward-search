@@ -1,11 +1,12 @@
 --------------------------------------------------------------------------------
 -- Iterative Forward Search                                                   --
 --------------------------------------------------------------------------------
--- This source code is licensed under the terms found in the LICENSE          --
--- file in the root directory of this source tree.                            --
+-- This source code is licensed under the terms found in the LICENSE file in  --
+-- the root directory of this source tree.                                    --
 --------------------------------------------------------------------------------
 
 module Data.IFS.Algorithm (
+    defaultTermination,
     ifs
 ) where
 
@@ -28,8 +29,10 @@ import           Data.IFS.Types
 -- | `defaultCanContinue` @iterations currAssign@ determines whether to continue
 -- the algorithm or terminate. It terminates if the current assignment assigns
 -- all variables or the maximum number of iterations has been exceded
-defaultCanContinue :: Int -> Assignment -> CSPMonad Assignment (Maybe Assignment)
-defaultCanContinue iterations currAssign =
+defaultTermination :: Int
+                   -> Assignment
+                   -> CSPMonad Assignment (Maybe Assignment)
+defaultTermination iterations currAssign =
     -- get variables
     cspVariables <$> ask >>= \vars ->
     -- check conditions
@@ -97,17 +100,17 @@ setValue currAssign var = do
     else do
         -- create map with key of the number of contraints violated, and the
         -- value being a list of assignments with that number of conflicts
-        let conflictMap = M.fromListWith (++) $ flip map (S.toList domain) $ \val ->
-                -- whether all must be distinct should be an option
-                let assignment = M.insert var val currAssign -- $ M.filter (/= val) currAssign
-                in (countConflicts assignment cons, [assignment])
+        let conflictMap = M.fromListWith (++) $ flip map (S.toList domain)
+                        $ \val ->
+                            let assignment = M.insert var val currAssign
+                            in (countConflicts assignment cons, [assignment])
 
         -- TODO: Some kind of nice formula - weight the smaller conflicts more
-        -- and the weighting should be heaver if the gap between nums of conflicts
-        -- is larger
+        -- and the weighting should be heaver if the gap between nums of
+        -- conflicts is larger
         -- Will chose from the 10% of assignments with the lowest number of
         -- conflicts
-        let cap = ceiling $ 0.1 * fromIntegral (S.size domain) -- :: Int
+        let cap = ceiling $ 0.1 * fromIntegral (S.size domain)
 
         -- get at least @cap@ assignments in order of conflicts
         let toChoseFrom = getToChoseFrom 0 cap [] conflictMap
@@ -133,8 +136,10 @@ setValue currAssign var = do
         getToChoseFrom n cap added toAdd
             | n >= cap   = added
             | otherwise = let ((_,as), toAdd') = M.deleteFindMin toAdd
-                          in getToChoseFrom (n + length as) cap
-                                (added ++ as) toAdd'
+                          in getToChoseFrom (n + length as)
+                                            cap
+                                            (added ++ as)
+                                            toAdd'
 
 -- | `removeConflicts'` @var assign constraintF toRemove@ repeated unassigns
 -- one of the least constrained variables except @var@ from @assign@ until the
@@ -216,7 +221,8 @@ ifs' iterations currAssign bestAssign = do
             conflictsRemoved <- removeConflicts newAssignment var
 
             -- run ifs' with the new assignment
-            ifs' (iterations+1) conflictsRemoved =<< getBest conflictsRemoved bestAssign
+            nextAssignment <- getBest conflictsRemoved bestAssign
+            ifs' (iterations+1) conflictsRemoved nextAssignment
 
         Just a -> pure a
 
