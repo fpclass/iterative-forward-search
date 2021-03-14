@@ -16,8 +16,8 @@ import           Control.Arrow              ( Arrow ((&&&)) )
 import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
 import           Control.Monad.Trans.Reader
 
-import qualified Data.IntMap                as M
-import qualified Data.IntSet                as S
+import qualified Data.IntMap                as IM
+import qualified Data.IntSet                as IS
 import           Data.Maybe                 ( fromJust )
 
 import           System.Random
@@ -36,7 +36,7 @@ defaultTermination iterations currAssign =
     -- get variables
     cspVariables <$> ask >>= \vars ->
     -- check conditions
-    if S.size vars > M.size currAssign && iterations <= 25 * S.size vars
+    if IS.size vars > IM.size currAssign && iterations <= 25 * IS.size vars
     then pure Nothing
     else pure $ Just currAssign
 
@@ -46,16 +46,16 @@ defaultTermination iterations currAssign =
 getMostRestricted :: Variables
                   -> Domains
                   -> Constraints
-                  -> M.IntMap [Var]
+                  -> IM.IntMap [Var]
 getMostRestricted vars doms cons =
-    -- TODO: This scaling one of these numbers could be better
-    M.fromListWith (++) $ flip map (S.toList vars) $ \var ->
-            (S.size (doms M.! var) - countConnectedCons var cons, [var])
+    -- TODO: Scaling one of these numbers could be better
+    IM.fromListWith (++) $ flip map (IS.toList vars) $ \var ->
+            (IS.size (doms IM.! var) - countConnectedCons var cons, [var])
 
     where
         -- counts the number of constraints connected to @var@
         countConnectedCons var = flip foldl 0 $ \conflicting (conVars, _) ->
-            if var `S.member` conVars
+            if var `IS.member` conVars
             then conflicting + 1
             else conflicting
 
@@ -67,7 +67,7 @@ selectVariable iterations currAssignment = do
 
     -- get variables currently not assigned. We can assume this is non-empty
     -- as the algorithm terminates when all are assigned
-    let unassigned = cspVariables S.\\ S.fromList (M.keys currAssignment)
+    let unassigned = cspVariables IS.\\ IS.fromList (IM.keys currAssignment)
 
     -- find which of these is most restricted
     let restricted = getMostRestricted unassigned cspDomains cspConstraints
@@ -77,11 +77,11 @@ selectVariable iterations currAssignment = do
     if iterations < cspRandomCap
     then
         -- pick a random variable from the most difficult
-        let toChoseFrom = snd $ M.findMin restricted
+        let toChoseFrom = snd $ IM.findMin restricted
         in (toChoseFrom !!) <$> lift (randomRIO (0, length toChoseFrom - 1))
     else
         -- pick any random variable
-        let unassignedList = S.toList unassigned
+        let unassignedList = IS.toList unassigned
         in (unassignedList !!) <$> lift (randomRIO (0, length unassignedList - 1))
 
 -- | `setValue` @csp currAssign var@ determines a value to assign to @var@ and
@@ -91,18 +91,18 @@ setValue :: Assignment
          -> CSPMonad r Assignment
 setValue currAssign var = do
     (doms, cons) <- (cspDomains &&& cspConstraints) <$> ask
-    let domain = flip S.filter (fromJust $ M.lookup var doms) $ \val ->
-            countConflicts (M.singleton var val) cons == 0
+    let domain = flip IS.filter (fromJust $ IM.lookup var doms) $ \val ->
+            countConflicts (IM.singleton var val) cons == 0
 
     -- If no possible values return current assignment unchanged
-    if S.null domain
+    if IS.null domain
     then pure currAssign
     else do
         -- create map with key of the number of contraints violated, and the
         -- value being a list of assignments with that number of conflicts
-        let conflictMap = M.fromListWith (++) $ flip map (S.toList domain)
+        let conflictMap = IM.fromListWith (++) $ flip map (IS.toList domain)
                         $ \val ->
-                            let assignment = M.insert var val currAssign
+                            let assignment = IM.insert var val currAssign
                             in (countConflicts assignment cons, [assignment])
 
         -- TODO: Some kind of nice formula - weight the smaller conflicts more
@@ -110,7 +110,7 @@ setValue currAssign var = do
         -- conflicts is larger
         -- Will chose from the 10% of assignments with the lowest number of
         -- conflicts
-        let cap = ceiling $ 0.1 * fromIntegral (S.size domain)
+        let cap = ceiling $ 0.1 * fromIntegral (IS.size domain)
 
         -- get at least @cap@ assignments in order of conflicts
         let toChoseFrom = getToChoseFrom 0 cap [] conflictMap
@@ -131,11 +131,11 @@ setValue currAssign var = do
         getToChoseFrom :: Int
                        -> Int
                        -> [Assignment]
-                       -> M.IntMap [Assignment]
+                       -> IM.IntMap [Assignment]
                        -> [Assignment]
         getToChoseFrom n cap added toAdd
             | n >= cap   = added
-            | otherwise = let ((_,as), toAdd') = M.deleteFindMin toAdd
+            | otherwise = let ((_,as), toAdd') = IM.deleteFindMin toAdd
                           in getToChoseFrom (n + length as)
                                             cap
                                             (added ++ as)
@@ -147,20 +147,20 @@ setValue currAssign var = do
 removeConflicts' :: Var
                  -> Assignment
                  -> (Assignment -> Bool)
-                 -> M.IntMap [Var]
+                 -> IM.IntMap [Var]
                  -> Assignment
 removeConflicts' var assign constraintF toRemove
     | constraintF assign = assign
     | otherwise          =
         let
             -- get next minimum variables
-            (_, x:remaining) = M.findMax toRemove
+            (_, x:remaining) = IM.findMax toRemove
             -- remove this variable from the map
             toRemove' = if null remaining
-                        then snd $ M.deleteFindMax toRemove
-                        else M.updateMax (const $ Just remaining) toRemove
+                        then snd $ IM.deleteFindMax toRemove
+                        else IM.updateMax (const $ Just remaining) toRemove
             -- unassign this variable unless it is the variable just assigned
-            newAssign = if x==var then assign else M.delete x assign
+            newAssign = if x==var then assign else IM.delete x assign
         in removeConflicts' var newAssign constraintF toRemove'
 
 -- | `removeConflicts` @currAssign var@ checks which constraints from @csp@
@@ -187,7 +187,7 @@ getBest :: Assignment
         -> Assignment
         -> CSPMonad r Assignment
 getBest newAssign bestAssign =
-    case M.size newAssign `compare` M.size bestAssign of
+    case IM.size newAssign `compare` IM.size bestAssign of
         -- if more variables are assigned in the current assignment it is better
         GT -> pure newAssign
         -- if less variables are assigned it is worse

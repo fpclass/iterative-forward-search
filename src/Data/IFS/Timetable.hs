@@ -14,8 +14,8 @@ module Data.IFS.Timetable (
 import           Data.Hashable
 import qualified Data.HashMap.Lazy           as HM
 import           Data.IntervalMap.FingerTree
-import qualified Data.IntMap                 as M
-import qualified Data.IntSet                 as S
+import qualified Data.IntMap                 as IM
+import qualified Data.IntSet                 as IS
 import           Data.List                   ( nub )
 import           Data.Maybe                  ( catMaybes )
 import           Data.Time
@@ -24,7 +24,7 @@ import           Data.IFS.Types
 
 --------------------------------------------------------------------------------
 
-type Slots = S.IntSet
+type Slots = IS.IntSet
 type Slot = Int
 type Event = Int
 
@@ -36,11 +36,11 @@ noOverlap vs = length (nub assigned) == length assigned
 -- | `noConcurrentOverlap` @vs slots@ ensures that the assigned values (the Just
 -- values) in @vs@ do not overlap. @slots@ is used to fetch the interval for
 -- each slot
-noConcurrentOverlap :: [Maybe Slot] -> M.IntMap (Interval UTCTime) -> Bool
+noConcurrentOverlap :: [Maybe Slot] -> IM.IntMap (Interval UTCTime) -> Bool
 noConcurrentOverlap vs slots = snd $ foldl f (empty, True) vs'
     where vs' = catMaybes vs
           f (im, False) _ = (im, False)
-          f (im, True) s = let interval = (slots M.! s) in
+          f (im, True) s = let interval = (slots IM.! s) in
                            if null $ interval `intersections` im
                            then (insert interval () im, True)
                            else (im, False)
@@ -55,11 +55,11 @@ calcDomains :: (Eq person, Hashable person)
             -> Domains
 calcDomains slots events unavailability =
     -- generate map of domains for every event
-    flip (flip HM.foldlWithKey' M.empty) events $ \m event people ->
+    flip (flip HM.foldlWithKey' IM.empty) events $ \m event people ->
         -- add domain for this event - all slots where no one is busy
-        flip (M.insert event) m $ S.difference slots $
+        flip (IM.insert event) m $ IS.difference slots $
             -- generate all slots where any member is unavailable
-            foldl (\s u -> s `S.union` (unavailability HM.! u)) S.empty people
+            foldl (\s u -> s `IS.union` (unavailability HM.! u)) IS.empty people
 
 -- | `flipHashmap` @hm@ converts the hashmap of lists of type b with key a to
 -- a hashmap index on values of b linked to lists of a
@@ -73,31 +73,31 @@ flipHashmap hm = HM.fromListWith (++) $ concat $ flip HM.mapWithKey hm $
 -- the same slot being used by 2 events, and the same person being assigned to 2
 -- places at once
 calcConstraints :: (Eq person, Hashable person)
-                => M.IntMap (Interval UTCTime)
+                => IM.IntMap (Interval UTCTime)
                 -> HM.HashMap Event [person]
                 -> Constraints
 calcConstraints slotMap events =
     let eventKeys = HM.keys events
-        noOverlapCons xs a = noConcurrentOverlap [a M.!? i | i <- xs] slotMap
+        noOverlapCons xs a = noConcurrentOverlap [a IM.!? i | i <- xs] slotMap
         notOverlapping = filter ((>1) . length) $ HM.elems $ flipHashmap events
     in -- prevent duplicate slot usage
-       (S.fromList eventKeys, \a -> noOverlap [a M.!? i | i <- eventKeys])
+       (IS.fromList eventKeys, \a -> noOverlap [a IM.!? i | i <- eventKeys])
        -- prevent the same person being allocated to multple places at the same
        -- time
-       : map (\xs -> (S.fromList xs, noOverlapCons xs)) notOverlapping
+       : map (\xs -> (IS.fromList xs, noOverlapCons xs)) notOverlapping
 
 -- | `toCSP` @slots events unavailability@ converts the given data into a CSP
 toCSP :: (Eq person, Hashable person)
-      => M.IntMap (Interval UTCTime)
+      => IM.IntMap (Interval UTCTime)
       -> HM.HashMap Event [person]
       -> HM.HashMap person Slots
       -> (Int -> Assignment -> CSPMonad r (Maybe r))
       -> CSP r
 toCSP slotMap events unavailability term =
-    let slots = M.keysSet slotMap
+    let slots = IM.keysSet slotMap
     in CSP {
         -- variables are the events
-        cspVariables = S.fromList $ HM.keys events,
+        cspVariables = IS.fromList $ HM.keys events,
         -- domains are the slots the events may be assigned to
         cspDomains = calcDomains slots events unavailability,
         -- constraints prevent several events being assigned to the same slot

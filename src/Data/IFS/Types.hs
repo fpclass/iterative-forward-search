@@ -22,8 +22,8 @@ module Data.IFS.Types (
 
 import           Control.Monad.Trans.Reader ( ReaderT )
 
-import qualified Data.IntMap                as M
-import qualified Data.IntSet                as S
+import qualified Data.IntMap                as IM
+import qualified Data.IntSet                as IS
 
 --------------------------------------------------------------------------------
 
@@ -47,10 +47,10 @@ data CSP r = CSP{
 
 -- | Represents the domains for different variables. The variables are indexed
 -- by integers
-type Domains = M.IntMap (S.IntSet)
+type Domains = IM.IntMap (IS.IntSet)
 
 -- | Represents the variables used in the timetabling problem
-type Variables = S.IntSet
+type Variables = IS.IntSet
 
 -- | Represents the constraints for the timetabling problem. The first element
 -- of the tuple represents the variables this constraint affects, the second is
@@ -58,7 +58,7 @@ type Variables = S.IntSet
 type Constraints = [(Variables, Assignment -> Bool)]
 
 -- | Represents an assignment of variables
-type Assignment = M.IntMap Val
+type Assignment = IM.IntMap Val
 
 -- | This is returned by the IFS. Solution indicates the assignment is complete,
 -- and Incomplete indicates the assignment is not complete
