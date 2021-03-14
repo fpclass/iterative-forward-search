@@ -17,7 +17,7 @@ import           Data.IntervalMap.FingerTree
 import qualified Data.IntMap                 as IM
 import qualified Data.IntSet                 as IS
 import           Data.List                   ( nub )
-import           Data.Maybe                  ( catMaybes )
+import           Data.Maybe                  ( catMaybes, fromMaybe )
 import           Data.Time
 
 import           Data.IFS.Types
@@ -45,9 +45,9 @@ noConcurrentOverlap vs slots = snd $ foldl f (empty, True) vs'
                            then (insert interval () im, True)
                            else (im, False)
 
--- | `calcDomains` @slots events availability@ creates the domain for each event
--- by finding all the slots where any member of the event is unavailable and
--- removing them from the list of slots
+-- | `calcDomains` @slots events unavailability@ creates the domain for each
+-- event by finding all the slots where any member of the event is unavailable
+-- and setting the domain to all slots except these
 calcDomains :: (Eq person, Hashable person)
             => Slots
             -> HM.HashMap Event [person]
@@ -59,10 +59,11 @@ calcDomains slots events unavailability =
         -- add domain for this event - all slots where no one is busy
         flip (IM.insert event) m $ IS.difference slots $
             -- generate all slots where any member is unavailable
-            foldl (\s u -> s `IS.union` (unavailability HM.! u)) IS.empty people
+            let unavailable = fromMaybe IS.empty . (`HM.lookup` unavailability)
+            in foldl (\s u -> s `IS.union` unavailable u) IS.empty people
 
 -- | `flipHashmap` @hm@ converts the hashmap of lists of type b with key a to
--- a hashmap index on values of b linked to lists of a
+-- a hashmap indexed on values of b linked to lists of a
 flipHashmap :: (Eq a, Hashable a, Eq b, Hashable b)
             => HM.HashMap a [b]
             -> HM.HashMap b [a]
@@ -86,7 +87,19 @@ calcConstraints slotMap events =
        -- time
        : map (\xs -> (IS.fromList xs, noOverlapCons xs)) notOverlapping
 
--- | `toCSP` @slots events unavailability@ converts the given data into a CSP
+-- | `toCSP` @slots events unavailability termination@ creates a CSP that
+-- timetables the events in @events@ such that everyones availability is
+-- respected and no one is timetabled to 2 events simultaneously. In this CSP
+-- the events are the variables, and the slots are the values.
+-- 
+-- Slots are identified by integers, and must be supplied with a time interval,
+-- and events are also identifed by intergers, and must be supplied as with a
+-- list of all people in the event. People can be represented by anything with
+-- a `Hashable` and an `Eq` instance, and @unavailability@ can be used to
+-- specify the slots where a person is unavailable.
+--
+-- Finally a termination condition must be provided. This is as defined in
+-- "Data.IFS.Types"
 toCSP :: (Eq person, Hashable person)
       => IM.IntMap (Interval UTCTime)
       -> HM.HashMap Event [person]

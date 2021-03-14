@@ -29,7 +29,7 @@ csp :: CSP r
 csp = toCSP slotMap events unavailability defaultTermination
 ```
 
-This will generate a CSP that creates a mapping from time slots 1, 2 and 3 to the events 1 and 2
+This will generate a CSP that creates a mapping from the events 1 and 2 to the time slots 1, 2 and 3. 
 
 ## Limitations
 
