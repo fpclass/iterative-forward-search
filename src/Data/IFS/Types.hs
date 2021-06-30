@@ -33,11 +33,11 @@ type Var = Int
 -- | Represents a value
 type Val = Int
 
--- | Monad used in CSP solver
+-- | Monad used in the CSP solver
 type CSPMonad r = ReaderT (CSP r) IO
 
 -- | Represents a contraint satisfaction problem
-data CSP r = CSP{
+data CSP r = MkCSP{
     cspDomains     :: Domains,
     cspVariables   :: Variables,
     cspConstraints :: Constraints,
@@ -47,7 +47,7 @@ data CSP r = CSP{
 
 -- | Represents the domains for different variables. The variables are indexed
 -- by integers
-type Domains = IM.IntMap (IS.IntSet)
+type Domains = IM.IntMap IS.IntSet
 
 -- | Represents the variables used in the timetabling problem
 type Variables = IS.IntSet
@@ -60,16 +60,16 @@ type Constraints = [(Variables, Assignment -> Bool)]
 -- | Represents an assignment of variables
 type Assignment = IM.IntMap Val
 
--- | This is returned by the IFS. Solution indicates the assignment is complete,
--- and Incomplete indicates the assignment is not complete
+-- | This is returned by the IFS. `Complete` indicates the assignment is
+-- complete, and `Incomplete` indicates the assignment is not complete
 data Solution
-    = Solution Assignment
+    = Complete Assignment
     | Incomplete Assignment
 
--- | `fromSolution` @solution@ extracts an Assignment value from a Solution
+-- | `fromSolution` @solution@ extracts an `Assignment` value from a `Solution`
 -- value
 fromSolution :: Solution -> Assignment
-fromSolution (Solution a)   = a
+fromSolution (Complete a)   = a
 fromSolution (Incomplete a) = a
 
 --------------------------------------------------------------------------------

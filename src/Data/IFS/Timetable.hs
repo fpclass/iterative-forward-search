@@ -28,7 +28,7 @@ type Slots = IS.IntSet
 type Slot = Int
 type Event = Int
 
--- | `noOverlap` @vs@ ensures that no Just values in @vs@ are the same
+-- | `noOverlap` @vs@ ensures that no `Just` values in @vs@ are the same
 noOverlap :: [Maybe Slot] -> Bool
 noOverlap vs = length (nub assigned) == length assigned
     where assigned = catMaybes vs
@@ -62,13 +62,13 @@ calcDomains slots events unavailability =
             let unavailable = fromMaybe IS.empty . (`HM.lookup` unavailability)
             in foldl (\s u -> s `IS.union` unavailable u) IS.empty people
 
--- | `flipHashmap` @hm@ converts the hashmap of lists of type b with key a to
--- a hashmap indexed on values of b linked to lists of a
+-- | `flipHashmap` @hm@ converts the hashmap of lists of type `b` with key `a`
+-- to a hashmap indexed on values of `b` linked to lists of `a`
 flipHashmap :: (Eq a, Hashable a, Eq b, Hashable b)
             => HM.HashMap a [b]
             -> HM.HashMap b [a]
 flipHashmap hm = HM.fromListWith (++) $ concat $ flip HM.mapWithKey hm $
-    \k vs -> map (\v -> (v, [k])) vs
+    \k vs -> map (, [k]) vs
 
 -- | `calcConstraints` @slots slotMap events@ creates the constraints which stop
 -- the same slot being used by 2 events, and the same person being assigned to 2
@@ -108,7 +108,7 @@ toCSP :: (Eq person, Hashable person)
       -> CSP r
 toCSP slotMap events unavailability term =
     let slots = IM.keysSet slotMap
-    in CSP {
+    in MkCSP {
         -- variables are the events
         cspVariables = IS.fromList $ HM.keys events,
         -- domains are the slots the events may be assigned to

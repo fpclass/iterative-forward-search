@@ -12,8 +12,8 @@ module Data.IFS.Algorithm (
 
 --------------------------------------------------------------------------------
 
-import           Control.Arrow              ( Arrow ((&&&)) )
-import           Control.Monad.Trans.Class  ( MonadTrans (lift) )
+import           Control.Arrow              ( Arrow((&&&)) )
+import           Control.Monad.Trans.Class  ( MonadTrans(lift) )
 import           Control.Monad.Trans.Reader
 
 import qualified Data.IntMap                as IM
@@ -31,14 +31,15 @@ import           Data.IFS.Types
 -- all variables or the maximum number of iterations has been exceded
 defaultTermination :: Int
                    -> Assignment
-                   -> CSPMonad Assignment (Maybe Assignment)
-defaultTermination iterations currAssign =
+                   -> CSPMonad Solution (Maybe Solution)
+defaultTermination iterations currAssign = do
     -- get variables
-    cspVariables <$> ask >>= \vars ->
+    vars <- cspVariables <$> ask
     -- check conditions
-    if IS.size vars > IM.size currAssign && iterations <= 25 * IS.size vars
-    then pure Nothing
-    else pure $ Just currAssign
+    case (IS.size vars > IM.size currAssign, iterations <= 25 * IS.size vars) of
+        (True, True)  -> pure Nothing
+        (True, False) -> pure $ Just $ Incomplete currAssign
+        (False, _)    -> pure $ Just $ Complete currAssign
 
 -- | `getMostRestricted` @vars doms cons@ indexes these variables by size of
 -- domain - # connected constraints. The lowest index is then the most
@@ -63,7 +64,7 @@ getMostRestricted vars doms cons =
 selectVariable :: Int -> Assignment -> CSPMonad r Var
 selectVariable iterations currAssignment = do
     -- get CSP parameters
-    CSP{..} <- ask
+    MkCSP{..} <- ask
 
     -- get variables currently not assigned. We can assume this is non-empty
     -- as the algorithm terminates when all are assigned
@@ -169,8 +170,8 @@ removeConflicts' var assign constraintF toRemove
 removeConflicts :: Assignment
                 -> Var
                 -> CSPMonad r Assignment
-removeConflicts currAssignment var =
-    (cspDomains &&& cspConstraints) <$> ask >>= \(doms, cons) ->
+removeConflicts currAssignment var = do
+    (doms, cons) <- (cspDomains &&& cspConstraints) <$> ask
     -- check each constraint and if it is violated unassign variables until
     -- the constraint passes
     pure $ flip (flip foldl currAssignment) cons $

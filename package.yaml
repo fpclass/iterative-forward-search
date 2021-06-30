@@ -30,6 +30,7 @@ dependencies:
 
 default-extensions:
 - RecordWildCards
+- TupleSections
 
 library:
   source-dirs: src
