@@ -6,6 +6,9 @@
 --------------------------------------------------------------------------------
 
 module Data.IFS.Timetable (
+    Slots,
+    Slot,
+    Event,
     toCSP
 ) where
 
@@ -38,12 +41,16 @@ noOverlap vs = length (nub assigned) == length assigned
 -- each slot
 noConcurrentOverlap :: [Maybe Slot] -> IM.IntMap (Interval UTCTime) -> Bool
 noConcurrentOverlap vs slots = snd $ foldl f (empty, True) vs'
-    where vs' = catMaybes vs
-          f (im, False) _ = (im, False)
-          f (im, True) s = let interval = (slots IM.! s) in
-                           if null $ interval `intersections` im
-                           then (insert interval () im, True)
-                           else (im, False)
+    where
+        vs' = catMaybes vs
+        
+        f (im, False) _ = (im, False)
+        f (im, True) s =
+            let interval = (slots IM.! s) in
+            if all (\(i,_) -> low interval == high i || high interval == low i)
+                $ interval `intersections` im
+            then (insert interval () im, True)
+            else (im, False)
 
 -- | `calcDomains` @slots events unavailability@ creates the domain for each
 -- event by finding all the slots where any member of the event is unavailable

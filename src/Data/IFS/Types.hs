@@ -20,6 +20,7 @@ module Data.IFS.Types (
 
 --------------------------------------------------------------------------------
 
+import           Control.DeepSeq
 import           Control.Monad.Trans.Reader ( ReaderT )
 
 import qualified Data.IntMap                as IM
@@ -72,6 +73,10 @@ type Assignment = IM.IntMap Val
 data Solution
     = Complete Assignment
     | Incomplete Assignment
+    deriving Show
+
+instance NFData Solution where
+    rnf = rnf . fromSolution
 
 -- | `fromSolution` @solution@ extracts an `Assignment` value from a `Solution`
 -- value

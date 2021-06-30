@@ -21,12 +21,13 @@ description:         An implementation of the IFS contraint satisfaction algorit
 dependencies:
 - base >= 4.7 && < 5
 - containers
+- deepseq
+- fingertree
+- hashable
 - random
+- time
 - transformers
 - unordered-containers
-- hashable
-- fingertree
-- time
 
 default-extensions:
 - RecordWildCards
@@ -45,3 +46,4 @@ benchmarks:
       - -with-rtsopts=-N
     dependencies:
       - ifs
+      - criterion

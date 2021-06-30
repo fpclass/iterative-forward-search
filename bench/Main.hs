@@ -9,8 +9,13 @@ import           Criterion.Main
 
 import           Control.Monad
 
-import qualified Data.Map           as M
-import qualified Data.Set           as S
+import qualified Data.HashMap.Lazy           as HM
+import           Data.IntervalMap.FingerTree
+import qualified Data.IntMap                 as IM
+import qualified Data.IntSet                 as IS
+import           Data.Maybe
+import           Data.Time.Clock
+import           Data.Time.Clock.POSIX
 
 import           Data.IFS.Algorithm
 import           Data.IFS.Timetable
@@ -18,14 +23,43 @@ import           Data.IFS.Types
 
 --------------------------------------------------------------------------------
 
-slots :: [Slots]
-slots = map (\x -> S.fromList [2*x + 1, 2*x + 2]) [0..3]
+-- | A value representing 9am
+am9 :: UTCTime
+am9 = posixSecondsToUTCTime 1625043600
 
-slots' :: [Slots]
-slots' = [S.fromList [1..4], S.fromList [5..8]]
+-- | A convenient operator for adding seconds to `UTCTime`
+(+.) :: UTCTime -> NominalDiffTime -> UTCTime
+(+.) = flip addUTCTime
 
-events :: HM.HashMap Int [String]
-events = HM.fromList $ zip [1..8] $
+-- | Possible slot set (max-assignment 8):
+-- 4 sets of 2 overlapping slots (like 4 time slots with 2 rooms each)
+solvableSlots :: IM.IntMap (Interval UTCTime)
+solvableSlots = IM.fromList [ (1, Interval am9 (am9 +. 3600))
+                            , (2, Interval am9 (am9 +. 3600))
+                            , (3, Interval (am9 +. 3600) (am9 +. (2*3600)))
+                            , (4, Interval (am9 +. 3600) (am9 +. (2*3600)))
+                            , (5, Interval (am9 +. (2*3600)) (am9 +. (3*3600)))
+                            , (6, Interval (am9 +. (2*3600)) (am9 +. (3*3600)))
+                            , (7, Interval (am9 +. (3*3600)) (am9 +. (4*3600)))
+                            , (8, Interval (am9 +. (3*3600)) (am9 +. (4*3600)))
+                            ]
+
+-- | Impossible slot set (max-assignment 6):
+-- 2 sets of 4 overlapping slots (like 2 time slots with 4 rooms each)
+unsolvableSlots :: IM.IntMap (Interval UTCTime)
+unsolvableSlots = IM.fromList [ (1, Interval am9 (am9 +. 3600))
+                              , (2, Interval am9 (am9 +. 3600))
+                              , (3, Interval am9 (am9 +. 3600))
+                              , (4, Interval am9 (am9 +. 3600))
+                              , (5, Interval (am9 +. 3600) (am9 +. (2*3600)))
+                              , (6, Interval (am9 +. 3600) (am9 +. (2*3600)))
+                              , (7, Interval (am9 +. 3600) (am9 +. (2*3600)))
+                              , (8, Interval (am9 +. 3600) (am9 +. (2*3600)))
+                              ]
+
+-- | A HashMap of who should be at certain events
+events :: HM.HashMap Event [String]
+events = HM.fromList $ zip [1..8]
     [
         ["v", "m"],
         ["r", "pa"],
@@ -37,8 +71,9 @@ events = HM.fromList $ zip [1..8] $
         ["pe", "v"]
     ]
 
+-- | A HashMap of when each person is available
 usersAvail :: HM.HashMap String Slots
-usersAvail = HM.map S.fromList $ HM.fromList
+usersAvail = HM.map IS.fromList $ HM.fromList
     [
         ("v", []),
         ("m", []),
@@ -51,50 +86,27 @@ usersAvail = HM.map S.fromList $ HM.fromList
         ("s", [1..3])
     ]
 
--- slots :: [Slots]
--- slots = [S.fromList [1..4], S.fromList [5..8]]
-
--- events :: HM.HashMap event [String]
--- events = HM.fromList $ zip [1..8] $ map (\i -> ["u" ++ show i, "v" ++ show (1 + (i `mod` 4))]) [1..8]
-
--- usersAvail :: HM.HashMap String Slots
--- usersAvail = HM.map S.fromList $ HM.fromList
---     [
---         ("u1", []),
---         ("u2", []),
---         ("u3", []),
---         ("u4", []),
---         ("u5", []),
---         ("u6", []),
---         ("u7", []),
---         ("u8", []),
---         ("v1", []),
---         ("v2", []),
---         ("v3", []),
---         ("v4", [])
---     ]
-
-
--- Processing this CSP will give an assignment of events to slots - variables represent events
--- and their values represent the slots
-
 --------------------------------------------------------------------------------
 
-cspSolvable :: CSP Int Int
-cspSolvable = toCSP slots events usersAvail
+-- | A CSP made from the solvable slots
+cspSolvable :: CSP Solution
+cspSolvable = toCSP solvableSlots events usersAvail defaultTermination
 
-cspUnsolvable :: CSP Int Int
-cspUnsolvable = toCSP slots' events usersAvail
+-- | A CSP made from the unsolvable slots
+cspUnsolvable :: CSP Solution
+cspUnsolvable = toCSP unsolvableSlots events usersAvail defaultTermination
 
-countExpectedLength :: Int -> [M.Map Int a] -> Int
-countExpectedLength n = length . filter ((==n) . M.size)
+-- | `countExpectedLength` @expected solutions@ counts the number of solutions
+-- that have @expected@ variables assigned
+countExpectedLength :: Int -> [Solution] -> Int
+countExpectedLength n = length . filter ((==n) . IM.size . fromSolution)
 
 main :: IO ()
 main = do
     -- count how many times /1000 the result is the best length
-    resultsSolveable <- replicateM 1000 $ ifs cspSolvable M.empty
+    resultsSolveable <- replicateM 1000 $ ifs cspSolvable IM.empty
     putStrLn $ "Solvable Best: " ++ show (countExpectedLength 8 resultsSolveable)
-    resultsUnsolveable <- replicateM 1000 $ ifs cspUnsolvable M.empty
+    resultsUnsolveable <- replicateM 1000 $ ifs cspUnsolvable IM.empty
     putStrLn $ "Unsolvable Best: " ++ show (countExpectedLength 6 resultsUnsolveable)
 
     -- benchmark solvable and unsolvable CSPs
@@ -103,9 +115,9 @@ main = do
             bgroup "Basic IFS Tests"
             [
                 bench "solvable" $
-                    nfIO (ifs cspSolvable M.empty),
+                    nfIO (ifs cspSolvable IM.empty),
                 bench "unsolvable" $
-                    nfIO (ifs cspUnsolvable M.empty)
+                    nfIO (ifs cspUnsolvable IM.empty)
             ]
         ]
 
