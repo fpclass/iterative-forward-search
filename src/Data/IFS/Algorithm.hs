@@ -28,7 +28,8 @@ import           Data.IFS.Types
 
 -- | `defaultCanContinue` @iterations currAssign@ determines whether to continue
 -- the algorithm or terminate. It terminates if the current assignment assigns
--- all variables or the maximum number of iterations has been exceded
+-- all variables or the maximum number of iterations has been exceded (25 times
+-- the number of variables)
 defaultTermination :: Int
                    -> Assignment
                    -> CSPMonad Solution (Maybe Solution)

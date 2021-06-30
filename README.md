@@ -9,7 +9,21 @@ This library implements a contraint solver via the [iterative forward search alg
 
 ## Usage
 
-Placeholder
+To use the CSP solver first create a `CSP` value which describes your CSP, for example
+```haskell
+csp :: CSP Solution
+csp = MkCSP {
+    cspVariables = IS.fromList [1,2,3],
+    cspDomains = IM.fromList [(1, [1, 2, 3]), (2, [1, 2, 4]), (3, [4, 5, 6])],
+    cspConstraints = [ (IS.fromList [1, 2], \a -> IM.lookup 1 a != IM.lookup 2 a)
+                     , (IS.fromList [2, 3], \a -> IM.lookup 1 a >= IM.lookup 3 a)
+                     ],
+    cspRandomCap = 30, -- 10 * (# of variables) is a reasonable default
+    cspTermination = defaultTermination
+}
+```
+
+You can then find a solution simply with `ifs csp`, which will perform iterations till the given termination function returns a `Just` value.
 
 ### Timetabling
 

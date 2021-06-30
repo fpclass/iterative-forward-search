@@ -41,7 +41,14 @@ data CSP r = MkCSP{
     cspDomains     :: Domains,
     cspVariables   :: Variables,
     cspConstraints :: Constraints,
+    -- | The number of iterations the algorithm should perform before selecting
+    -- unassigned variables at random instead of picking one of the most
+    -- constrained (to avoid getting stuck in a loop)
     cspRandomCap   :: Int,
+    -- | When to terminate and return the current assignment, given the number
+    -- of iterations performed and the current assignment. A `Nothing` value
+    -- means continue, and a `Just` value means terminate and return that
+    -- value
     cspTermination :: Int -> Assignment -> CSPMonad r (Maybe r)
 }
 
