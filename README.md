@@ -1,4 +1,4 @@
-# IFS
+# Iterative Forward Search
 
 ![MIT](https://img.shields.io/github/license/fpclass/ifs)
 [![CI](https://github.com/fpclass/ifs/actions/workflows/haskell.yaml/badge.svg)](https://github.com/fpclass/ifs/actions/workflows/haskell.yaml)
@@ -16,12 +16,14 @@ csp = MkCSP {
     cspVariables = IS.fromList [1,2,3],
     cspDomains = IM.fromList [(1, [1, 2, 3]), (2, [1, 2, 4]), (3, [4, 5, 6])],
     cspConstraints = [ (IS.fromList [1, 2], \a -> IM.lookup 1 a != IM.lookup 2 a)
-                     , (IS.fromList [2, 3], \a -> IM.lookup 1 a >= IM.lookup 3 a)
+                     , (IS.fromList [2, 3], \a -> IM.lookup 2 a >= IM.lookup 3 a)
                      ],
     cspRandomCap = 30, -- 10 * (# of variables) is a reasonable default
     cspTermination = defaultTermination
 }
 ```
+
+This example represents a CSP with 3 variables, `1`, `2` and `3`, where variable `1` has domain `[1, 2, 3]`, variable `2` has domain `[1, 2, 4]`, and variable `3` has domain `[4, 5, 6]`. The contraints are that variable `1` is not equal to variable `2`, and variable `2` is at least as big as variable `3`. It uses the default termination condition, and performs 30 iterations before we select variables randomly.
 
 You can then find a solution simply by evaluating `ifs csp`, which will perform iterations till the given termination function returns a `Just` value.
 
