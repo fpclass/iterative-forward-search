@@ -5,7 +5,7 @@
 [![stackage-nightly](https://github.com/fpclass/ifs/actions/workflows/stackage-nightly.yaml/badge.svg)](https://github.com/fpclass/ifs/actions/workflows/stackage-nightly.yaml)
 [![ifs](https://img.shields.io/hackage/v/ifs)](https://hackage.haskell.org/package/ifs)
 
-This library implements a contraint solver via the [iterative forward search algorithm](https://muller.unitime.org/lscs04.pdf). It also includes a helper module specifically using the algorithm to timetable events.
+This library implements a contraint solver via the [iterative forward search algorithm](https://muller.unitime.org/lscs04.pdf). It also includes a helper module specifically for using the algorithm to timetable events.
 
 ## Usage
 
@@ -23,7 +23,7 @@ csp = MkCSP {
 }
 ```
 
-You can then find a solution simply with `ifs csp`, which will perform iterations till the given termination function returns a `Just` value.
+You can then find a solution simply by evaluating `ifs csp`, which will perform iterations till the given termination function returns a `Just` value.
 
 ### Timetabling
 
