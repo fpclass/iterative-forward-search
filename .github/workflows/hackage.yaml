@@ -14,13 +14,18 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Install the Haskell Stack 
+    - name: Install the Haskell Stack
       run: |
         mkdir -p ~/.local/bin
         curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
+    - name: Prevent prompt to save creds
+      run: |
+        mkdir ~/.stack
+        echo "save-hackage-creds: false" >> ~/.stack/config.yaml
+
     - name: Create package
-      run: echo "n\n" | stack upload --pvp-bounds upper .
+      run: stack upload --pvp-bounds upper .
       env:
         HACKAGE_USERNAME: ${{ secrets.hackage_username }}
         HACKAGE_PASSWORD: ${{ secrets.hackage_password }}
