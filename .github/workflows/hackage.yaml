@@ -20,7 +20,7 @@ jobs:
         curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
     - name: Create package
-      run: stack upload --pvp-bounds upper .
+      run: echo "n\n" | stack upload --pvp-bounds upper .
       env:
         HACKAGE_USERNAME: ${{ secrets.hackage_username }}
         HACKAGE_PASSWORD: ${{ secrets.hackage_password }}
