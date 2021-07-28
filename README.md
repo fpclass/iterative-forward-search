@@ -1,9 +1,9 @@
 # Iterative Forward Search
 
-![MIT](https://img.shields.io/github/license/fpclass/ifs)
-[![CI](https://github.com/fpclass/ifs/actions/workflows/haskell.yaml/badge.svg)](https://github.com/fpclass/ifs/actions/workflows/haskell.yaml)
-[![stackage-nightly](https://github.com/fpclass/ifs/actions/workflows/stackage-nightly.yaml/badge.svg)](https://github.com/fpclass/ifs/actions/workflows/stackage-nightly.yaml)
-[![ifs](https://img.shields.io/hackage/v/ifs)](https://hackage.haskell.org/package/ifs)
+![MIT](https://img.shields.io/github/license/fpclass/iterative-forward-search)
+[![CI](https://github.com/fpclass/iterative-forward-search/actions/workflows/haskell.yaml/badge.svg)](https://github.com/fpclass/iterative-forward-search/actions/workflows/haskell.yaml)
+[![stackage-nightly](https://github.com/fpclass/iterative-forward-search/actions/workflows/stackage-nightly.yaml/badge.svg)](https://github.com/fpclass/iterative-forward-search/actions/workflows/stackage-nightly.yaml)
+[![iterative-forward-search](https://img.shields.io/hackage/v/iterative-forward-search)](https://hackage.haskell.org/package/iterative-forward-search)
 
 This library implements a contraint solver via the [iterative forward search algorithm](https://muller.unitime.org/lscs04.pdf). It also includes a helper module specifically for using the algorithm to timetable events.
 
